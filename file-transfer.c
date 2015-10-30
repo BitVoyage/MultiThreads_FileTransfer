@@ -4,11 +4,13 @@
 #include<sys/socket.h>
 #include<netinet/in.h>
 #include<string.h>
+
 #include"file-stream.h"
 #include"file-transfer.h"
 #include<pthread.h>
+#include"dbtime.h"
 
-#define THREAD_NUM 1
+#define THREAD_NUM 8
 
 void *tcp_send_thread(void *a)
 {	
@@ -29,7 +31,7 @@ void *tcp_send_thread(void *a)
 		if(fgets(sendData.buf, 1024, filefd) > 0)
 		{
 			sendData.index = index;
-			printf("send%d\n", index);
+			//printf("send%d\n", index);
 			send(fd, (char*)&sendData, length, 0);
 			index++;
 		}
@@ -39,7 +41,7 @@ void *tcp_send_thread(void *a)
 		}
 	}	
 	sendData.index = -1;
-	printf("send -1\n");
+	//printf("send -1\n");
 	send(fd, (char *)(&sendData), length, 0);
 	close(filefd);
 	close(fd);	
@@ -61,13 +63,13 @@ void *tcp_recv_thread(void *a)
 		recv(newfd, (char*)&recvData, length, 0);
 		if(recvData.index < 0)
 		{
-			printf("send finish\n");
+			//printf("send finish\n");
 			close(filefd);
 			break;
 		}
 		else
 		{
-			printf("recv:%d    %d\n", recvData.index,newfd);
+			//printf("recv:%d    %d\n", recvData.index,newfd);
 			fputs(recvData.buf, filefd);
 		}		
 	}	
@@ -83,6 +85,7 @@ void tcp_file_send(int controlfd, int serverfd, char *filename)
 	int i;
 	int size = (1073741824 / 1024 + 1) / THREAD_NUM + 1;
 	pthread_t tid[10];
+	
 	for(i = 0; i<THREAD_NUM; i++)
 	{
 		listen(serverfd, 10);
@@ -102,6 +105,7 @@ void tcp_file_send(int controlfd, int serverfd, char *filename)
 		pthread_join(tid[i], NULL);
 	}
 	printf("finish\n");
+	
 }
 
 void tcp_file_get(int fd)
@@ -114,6 +118,8 @@ void tcp_file_get(int fd)
 	close(filefd);
 	int i;
 	pthread_t tid[10];
+	dbtime_startTest ("timing");
+
 	for(i = 0; i<THREAD_NUM; i++)
 	{
 		struct thread_args *args;
@@ -129,5 +135,8 @@ void tcp_file_get(int fd)
 	{
 		pthread_join(tid[i], NULL);
 	}
+	dbtime_endAndShow ();
+	printf("finish\n");
+	close(fd);
 }
 
